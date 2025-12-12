@@ -9,8 +9,8 @@ import numpy as np
 
 # PATHS — EDIT THESE
 
-IMAGE_DIR = "data/flickr30k-images"
-CAPTION_FILE = "data/flickr30k-captions/Results.csv"
+IMAGE_DIR = "data/flickr30k-images/flickr30k_images"
+CAPTION_FILE = "data/flickr30k-images/Results.csv"
 CLEANED_CAPTIONS_FILE = "data/cleaned_captions.csv"
 TRAIN_SPLIT_FILE = "data/train_split.csv"
 VAL_SPLIT_FILE = "data/val_split.csv"

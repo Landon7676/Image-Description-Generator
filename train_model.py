@@ -24,7 +24,9 @@ CLEANED_CAPTIONS_FILE = os.path.join("data", "cleaned_captions.csv")
 TRAIN_SPLIT_FILE = os.path.join("data", "train_split.csv")
 VAL_SPLIT_FILE = os.path.join("data", "val_split.csv")
 TEST_SPLIT_FILE = os.path.join("data", "test_split.csv")
-MODEL_PATH = "model/" 
+MODEL_PATH = "model/"
+
+IMAGE_DIR = "data/flickr30k-images/flickr30k_images"
 
 os.makedirs(MODEL_PATH, exist_ok=True)
 
@@ -111,8 +113,10 @@ class EncoderCNN(nn.Module):
         
     def forward(self, images):
         with torch.no_grad():
-            features = self.resnet(images).squeeze()
-        features = self.bn(self.linear(features))
+            features = self.resnet(images)        # shape: (N, 2048, 1, 1)
+        # flatten to (N, 2048) even if N = 1
+        features = features.view(features.size(0), -1)
+        features = self.bn(self.linear(features)) # BatchNorm1d expects (N, C)
         return features
 
 class DecoderRNN(nn.Module):
@@ -138,8 +142,14 @@ if __name__ == "__main__":
     print(f"Vocabulary size: {len(vocab)}")
 
     train_df = pd.read_csv(TRAIN_SPLIT_FILE)
-    val_df = pd.read_csv(VAL_SPLIT_FILE)
-    test_df = pd.read_csv(TEST_SPLIT_FILE)
+    val_df   = pd.read_csv(VAL_SPLIT_FILE)
+    test_df  = pd.read_csv(TEST_SPLIT_FILE)
+
+    # Drop any rows with missing captions and ensure captions are strings
+    for df in (train_df, val_df, test_df):
+        df.dropna(subset=["caption"], inplace=True)
+        df["caption"] = df["caption"].astype(str)
+
 
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
@@ -159,9 +169,9 @@ if __name__ == "__main__":
         captions = torch.nn.utils.rnn.pad_sequence(captions, batch_first=True, padding_value=vocab('<pad>'))
         return images, captions, lengths
 
-    train_dataset = FlickrDataset(train_df, "data/flickr30k-images", vocab, transform)
-    val_dataset = FlickrDataset(val_df, "data/flickr30k-images", vocab, transform)
-    test_dataset = FlickrDataset(test_df, "data/flickr30k-images", vocab, transform)
+    train_dataset = FlickrDataset(train_df, IMAGE_DIR, vocab, transform)
+    val_dataset   = FlickrDataset(val_df,   IMAGE_DIR, vocab, transform)
+    test_dataset  = FlickrDataset(test_df,  IMAGE_DIR, vocab, transform)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
